@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RELIANCE · Matching Engine</title>
+
+    <style>
+        :root {
+            --bg: #0b0e14;
+            --panel: #0b0e14;
+            --line: #1c212b;
+            --text: #c9d1d9;
+            --muted: #6b7280;
+            --buy: #26a69a;
+            --sell: #ef5350;
+            --gold: #f0a020;
+            --input: #131720;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
+        }
+
+        .mono { font-family: Consolas, monospace; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .symbol {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .price {
+            margin-left: 14px;
+            color: var(--buy);
+            font-size: 21px;
+            font-weight: bold;
+        }
+
+        .spread, .status {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .spread { margin-left: 14px; }
+
+        .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin-right: 7px;
+            border-radius: 50%;
+            background: var(--buy);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            50% { opacity: .35; }
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            min-height: calc(100vh - 60px);
+        }
+
+        .column {
+            padding: 14px;
+            border-right: 1px solid var(--line);
+        }
+
+        .column:last-child {
+            border-right: 0;
+        }
+
+        .title {
+            margin-bottom: 14px;
+            color: var(--muted);
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .book-header, .book-row, .trade-header, .trade-row {
+            display: grid;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .book-header, .book-row {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .trade-header, .trade-row {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+        }
+
+        .book-header, .trade-header {
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .right { text-align: right; }
+
+        .book-row {
+            position: relative;
+            min-height: 30px;
+            padding: 6px 0;
+            overflow: hidden;
+        }
+
+        .depth {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            opacity: .65;
+        }
+
+        .ask .depth { background: rgba(239, 83, 80, .16); }
+        .bid .depth { background: rgba(38, 166, 154, .16); }
+
+        .book-row span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .ask .level-price { color: var(--sell); }
+        .bid .level-price { color: var(--buy); }
+
+        .mid-price {
+            margin: 10px 0;
+            padding: 9px;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #chart {
+            width: 100%;
+            height: 270px;
+            display: block;
+        }
+
+        .trade-row {
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(28, 33, 43, .55);
+        }
+
+        .buy-text { color: var(--buy); font-weight: bold; }
+        .sell-text { color: var(--sell); font-weight: bold; }
+
+        .side-buttons {
+            display: flex;
+            gap: 7px;
+            margin-bottom: 14px;
+        }
+
+        .side-button {
+            flex: 1;
+            padding: 11px;
+            border: 0;
+            border-radius: 6px;
+            color: var(--muted);
+            background: #1c212b;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .side-button.active-buy {
+            color: #07110f;
+            background: var(--buy);
+        }
+
+        .side-button.active-sell {
+            color: #160708;
+            background: var(--sell);
+        }
+
+        label {
+            display: block;
+            margin: 14px 0 5px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: var(--input);
+            color: var(--text);
+            font-family: Consolas, monospace;
+            font-size: 14px;
+        }
+
+        #submitButton {
+            width: 100%;
+            margin-top: 20px;
+            padding: 13px;
+            border: 0;
+            border-radius: 6px;
+            background: var(--buy);
+            color: #07110f;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #message {
+            min-height: 22px;
+            margin-top: 14px;
+            color: var(--gold);
+            font-size: 12px;
+        }
+
+        .hint {
+            margin-top: 22px;
+            color: #4b5563;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 850px) {
+            main { grid-template-columns: 1fr; }
+            .column { border-right: 0; border-bottom: 1px solid var(--line); }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <div>
+        <span class="symbol">RELIANCE</span>
+        <span id="midPrice" class="price mono">₹100.00</span>
+        <span id="spread" class="spread mono">spread 0.00</span>
+    </div>
+
+    <div class="status">
+        <span class="dot"></span>LIVE · engine: Java Matching Engine
+    </div>
+</header>
+
+<main>
+    <section class="column">
+        <div class="title">Order Book</div>
+
+        <div class="book-header mono">
+            <span>Price</span>
+            <span class="right">Qty</span>
+        </div>
+
+        <div id="asks"></div>
+
+        <div id="bookMidPrice" class="mid-price mono">100.00</div>
+
+        <div id="bids"></div>
+    </section>
+
+    <section class="column">
+        <div class="title">Price</div>
+        <canvas id="chart"></canvas>
+
+        <div class="title" style="margin-top: 20px;">Recent Trades</div>
+
+        <div class="trade-header mono">
+            <span>Side</span>
+            <span>Price</span>
+            <span>Qty</span>
+            <span class="right">Time</span>
+        </div>
+
+        <div id="trades"></div>
+    </section>
+
+    <section class="column">
+        <div class="title">Place Order</div>
+
+        <div class="side-buttons">
+            <button id="buyButton" class="side-button active-buy">BUY</button>
+            <button id="sellButton" class="side-button">SELL</button>
+        </div>
+
+        <label for="quantity">Quantity</label>
+        <input id="quantity" type="number" value="10" min="1">
+
+        <label for="price">Limit Price</label>
+        <input id="price" type="number" value="100" step="0.01" min="0.01">
+
+        <button id="submitButton">Submit Buy Order</button>
+
+        <p id="message"></p>
+
+        <p class="hint">
+            Orders are sent to your Spring Boot API and matched by the Java limit-order-book engine.
+        </p>
+    </section>
+</main>
+
+<script>
+    let side = "BUY";
+    let recentTrades = [];
+    let chartData = [];
+
+    function money(price) {
+        return Number(price || 0).toFixed(2);
+    }
+
+    function aggregateOrders(orders, direction) {
+        const levels = new Map();
+
+        orders.forEach(order => {
+            const price = Number(order.price);
+            levels.set(price, (levels.get(price) || 0) + Number(order.quantity));
+        });
+
+        return [...levels.entries()]
+            .map(([price, qty]) => ({ price, qty }))
+            .sort((a, b) => direction === "bid" ? b.price - a.price : a.price - b.price)
+            .slice(0, 8);
+    }
+
+    function renderLevels(elementId, levels, type) {
+        const element = document.getElementById(elementId);
+        const maxQty = Math.max(...levels.map(level => level.qty), 1);
+
+        const displayLevels = type === "ask" ? [...levels].reverse() : levels;
+
+        element.innerHTML = displayLevels.length
+            ? displayLevels.map(level => `
+                <div class="book-row ${type} mono">
+                    <div class="depth" style="width: ${(level.qty / maxQty) * 100}%"></div>
+                    <span class="level-price">${money(level.price)}</span>
+                    <span class="right">${level.qty}</span>
+                </div>
+            `).join("")
+            : `<div class="book-row mono"><span style="color:#6b7280">No orders</span></div>`;
+    }
+
+    function renderTrades() {
+        const element = document.getElementById("trades");
+
+        element.innerHTML = recentTrades.length
+            ? recentTrades.map(trade => {
+                const time = new Date(trade.timestamp).toLocaleTimeString();
+                const sideClass = trade.aggressorSide === "BUY" ? "buy-text" : "sell-text";
+
+                return `
+                    <div class="trade-row mono">
+                        <span class="${sideClass}">${trade.aggressorSide}</span>
+                        <span>${money(trade.price)}</span>
+                        <span>${trade.quantity}</span>
+                        <span class="right" style="color:#6b7280">${time}</span>
+                    </div>
+                `;
+            }).join("")
+            : `<div class="trade-row mono" style="color:#6b7280">No trades yet</div>`;
+    }
+
+    function drawChart() {
+        const canvas = document.getElementById("chart");
+        const context = canvas.getContext("2d");
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+
+        canvas.width = width * window.devicePixelRatio;
+        canvas.height = height * window.devicePixelRatio;
+        context.scale(window.devicePixelRatio, window.devicePixelRatio);
+        context.clearRect(0, 0, width, height);
+
+        if (chartData.length < 2) return;
+
+        const prices = chartData.map(point => point.price);
+        const min = Math.min(...prices) - 1;
+        const max = Math.max(...prices) + 1;
+        const range = max - min || 1;
+
+        context.strokeStyle = "#f0a020";
+        context.lineWidth = 2;
+        context.beginPath();
+
+        chartData.forEach((point, index) => {
+            const x = (index / (chartData.length - 1)) * width;
+            const y = height - ((point.price - min) / range) * height;
+
+            if (index === 0) context.moveTo(x, y);
+            else {
+    context.quadraticCurveTo(
+        x - width / chartData.length,
+        y,
+        x,
+        y
+    );
+}
+        });
+
+        context.stroke();
+    }
+
+    async function loadBook() {
+        const response = await fetch("/api/book");
+        if (!response.ok) throw new Error("Cannot load order book");
+
+        const book = await response.json();
+        const bids = aggregateOrders(book.bids || [], "bid");
+        const asks = aggregateOrders(book.asks || [], "ask");
+
+        renderLevels("bids", bids, "bid");
+        renderLevels("asks", asks, "ask");
+
+        const bestBid = bids[0]?.price;
+        const bestAsk = asks[0]?.price;
+
+        let mid = chartData.at(-1)?.price || 100;
+        if (bestBid && bestAsk) mid = (bestBid + bestAsk) / 2;
+        else if (bestBid) mid = bestBid;
+        else if (bestAsk) mid = bestAsk;
+
+        document.getElementById("midPrice").textContent = `₹${money(mid)}`;
+        document.getElementById("bookMidPrice").textContent = money(mid);
+
+        const spread = bestBid && bestAsk ? bestAsk - bestBid : 0;
+        document.getElementById("spread").textContent = `spread ${money(spread)}`;
+
+
+    }
+
+    async function submitOrder() {
+        const price = Number(document.getElementById("price").value);
+        const quantity = Number(document.getElementById("quantity").value);
+        const message = document.getElementById("message");
+
+        if (price <= 0 || quantity <= 0) {
+            message.textContent = "Price and quantity must be greater than zero.";
+            return;
+        }
+
+        const response = await fetch("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                symbol: "RELIANCE",
+                side: side,
+                type: "LIMIT",
+                price: price,
+                quantity: quantity
+            })
+        });
+
+        if (!response.ok) {
+            message.textContent = "Order rejected. Check the Java server.";
+            return;
+        }
+
+        const trades = await response.json();
+
+        recentTrades = [...trades, ...recentTrades].slice(0, 10);
+        renderTrades();
+        if (trades.length > 0) {
+    const latestTradePrice = Number(trades[0].price);
+
+    chartData = [...chartData, { price: latestTradePrice }].slice(-40);
+
+    drawChart();
+}
+
+        message.textContent = trades.length
+            ? `Trade executed: ${trades.length} fill(s).`
+            : "Order added to the order book.";
+
+        await loadBook();
+    }
+
+    function setSide(newSide) {
+        side = newSide;
+
+        document.getElementById("buyButton").className =
+            `side-button ${side === "BUY" ? "active-buy" : ""}`;
+
+        document.getElementById("sellButton").className =
+            `side-button ${side === "SELL" ? "active-sell" : ""}`;
+
+        document.getElementById("submitButton").textContent =
+            side === "BUY" ? "Submit Buy Order" : "Submit Sell Order";
+
+        document.getElementById("submitButton").style.background =
+            side === "BUY" ? "#26a69a" : "#ef5350";
+    }
+
+    document.getElementById("buyButton").addEventListener("click", () => setSide("BUY"));
+    document.getElementById("sellButton").addEventListener("click", () => setSide("SELL"));
+    document.getElementById("submitButton").addEventListener("click", submitOrder);
+
+    window.addEventListener("resize", drawChart);
+
+    renderTrades();
+    loadBook().catch(() => {
+        document.getElementById("message").textContent =
+            "Start MatchingEngineApplication to connect.";
+    });
+
+    setInterval(() => loadBook().catch(() => {}), 1000);
+</script>
+</body>
+</html>
