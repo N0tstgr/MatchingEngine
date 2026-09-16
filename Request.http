@@ -1,0 +1,10 @@
+POST http://localhost:8080/api/orders
+Content-Type: application/json
+
+{
+  "symbol": "RELIANCE",
+  "side": "BUY",
+  "type": "LIMIT",
+  "price": 100.00,
+  "quantity": 10
+}
